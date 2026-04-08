@@ -61,9 +61,14 @@ async def main() -> None:
     action_size = env.action_space.n
     agent = DQNAgent(obs_size, action_size)
 
+    # Wrap the model loading in a try/except to prevent Git LFS crashes
     model_path = os.path.join(ROOT_DIR, "rl", "models", "dqn_healthcare.pth")
     if os.path.exists(model_path):
-        agent.load(model_path)
+        try:
+            agent.load(model_path)
+        except Exception as e:
+            print(f"[Warning] Could not load PyTorch weights (likely an LFS pointer). Error: {e}")
+            # The script will gracefully continue and use the greedy fallback!
 
     rewards: List[float] = []
     steps_taken = 0
