@@ -20,13 +20,18 @@ RUN apt-get update && apt-get install -y \
 # Install Backend Dependencies
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-RUN pip install torch gymnasium numpy  # Ensure RL core is present
 
-# Copy RL and Environment modules (Critical for your DQN model)
+# Copy RL, Environment, and new Server modules
 COPY openenv_env/ ./openenv_env/
 COPY rl/ ./rl/
 COPY backend/ ./backend/
-COPY inference.py ./
+COPY server/ ./server/
+
+# Copy scripts and OpenEnv configuration files
+COPY inference.py pyproject.toml uv.lock ./
+
+# Install the project as a package (This automatically installs openenv-core, openai, torch, etc.)
+RUN pip install -e .
 
 # Copy built frontend from Stage 1 to a 'static' folder in backend
 COPY --from=frontend-builder /app/frontend/dist ./static
