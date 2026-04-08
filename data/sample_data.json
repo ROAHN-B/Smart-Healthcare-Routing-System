@@ -1,0 +1,144 @@
+{
+  "hospitals": [
+    {
+      "id": "h0",
+      "name": "City General Hospital",
+      "address": "MG Road, Bengaluru",
+      "lat": 12.9716,
+      "lon": 77.5946,
+      "total_beds": 100,
+      "beds_available": 72,
+      "icu_beds": 20,
+      "icu_available": 14,
+      "wait_time": 10,
+      "specialties": ["Trauma", "Cardiology", "Neurology"]
+    },
+    {
+      "id": "h1",
+      "name": "Apex Medical Centre",
+      "address": "Koramangala, Bengaluru",
+      "lat": 12.9352,
+      "lon": 77.6244,
+      "total_beds": 80,
+      "beds_available": 55,
+      "icu_beds": 15,
+      "icu_available": 9,
+      "wait_time": 15,
+      "specialties": ["Orthopedics", "General Surgery"]
+    },
+    {
+      "id": "h2",
+      "name": "St. Mary's Hospital",
+      "address": "Hebbal, Bengaluru",
+      "lat": 13.0012,
+      "lon": 77.5800,
+      "total_beds": 60,
+      "beds_available": 48,
+      "icu_beds": 10,
+      "icu_available": 7,
+      "wait_time": 5,
+      "specialties": ["Pediatrics", "Obstetrics"]
+    },
+    {
+      "id": "h3",
+      "name": "LifeCare Institute",
+      "address": "Indiranagar, Bengaluru",
+      "lat": 12.9582,
+      "lon": 77.6478,
+      "total_beds": 120,
+      "beds_available": 91,
+      "icu_beds": 30,
+      "icu_available": 22,
+      "wait_time": 20,
+      "specialties": ["ICU", "Burns", "Multi-Organ"]
+    },
+    {
+      "id": "h4",
+      "name": "Metro Emergency Hospital",
+      "address": "Whitefield, Bengaluru",
+      "lat": 12.9830,
+      "lon": 77.6080,
+      "total_beds": 90,
+      "beds_available": 63,
+      "icu_beds": 25,
+      "icu_available": 18,
+      "wait_time": 8,
+      "specialties": ["Emergency", "Trauma", "Cardiology"]
+    }
+  ],
+  "ambulances": [
+    {
+      "id": "a0",
+      "name": "AMB-001",
+      "lat": 12.9600,
+      "lon": 77.5900,
+      "status": "available",
+      "assigned_patient": null,
+      "speed_kmh": 60
+    },
+    {
+      "id": "a1",
+      "name": "AMB-002",
+      "lat": 12.9800,
+      "lon": 77.6100,
+      "status": "available",
+      "assigned_patient": null,
+      "speed_kmh": 65
+    },
+    {
+      "id": "a2",
+      "name": "AMB-003",
+      "lat": 12.9450,
+      "lon": 77.6300,
+      "status": "available",
+      "assigned_patient": null,
+      "speed_kmh": 55
+    },
+    {
+      "id": "a3",
+      "name": "AMB-004",
+      "lat": 13.0000,
+      "lon": 77.5700,
+      "status": "available",
+      "assigned_patient": null,
+      "speed_kmh": 70
+    }
+  ],
+  "sample_patients": [
+    {
+      "name": "Ravi Kumar",
+      "severity": 9.2,
+      "lat": 12.9720,
+      "lon": 77.6010,
+      "notes": "Cardiac arrest, unconscious"
+    },
+    {
+      "name": "Priya Sharma",
+      "severity": 5.5,
+      "lat": 12.9550,
+      "lon": 77.6200,
+      "notes": "Fractured arm, stable"
+    },
+    {
+      "name": "Anil Mehta",
+      "severity": 2.1,
+      "lat": 12.9900,
+      "lon": 77.5850,
+      "notes": "Minor laceration"
+    },
+    {
+      "name": "Sunita Rao",
+      "severity": 8.7,
+      "lat": 12.9400,
+      "lon": 77.6350,
+      "notes": "Severe head injury, possible internal bleeding"
+    },
+    {
+      "name": "Vikram Singh",
+      "severity": 6.3,
+      "lat": 12.9650,
+      "lon": 77.5750,
+      "notes": "Diabetic emergency, glucose critically low"
+    }
+  ]
+}

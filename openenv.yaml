@@ -1,0 +1,16 @@
+version: 1.0
+name: smarter-healthcare-routing
+description: Solapur Emergency Routing Environment
+tasks:
+  - id: smarter-solapur-normal
+    entrypoint: openenv_env.healthcare_env:HealthcareRoutingEnv
+    kwargs:
+      task_type: "normal"
+  - id: smarter-solapur-rushhour
+    entrypoint: openenv_env.healthcare_env:HealthcareRoutingEnv
+    kwargs:
+      task_type: "rushhour"
+  - id: smarter-solapur-disaster
+    entrypoint: openenv_env.healthcare_env:HealthcareRoutingEnv
+    kwargs:
+      task_type: "disaster"

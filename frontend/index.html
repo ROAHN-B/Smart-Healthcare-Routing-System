@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Routing System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+      html, body, #root { height: 100%; width: 100%; }
+      body {
+        font-family: 'Inter', sans-serif;
+        background: #000000;
+        color: #ffffff;
+        -webkit-font-smoothing: antialiased;
+      }
+      
+      /* LEAFLET OVERRIDES FOR NOTHING OS */
+      .leaflet-popup-content-wrapper {
+        background: #000000 !important;
+        color: #ffffff !important;
+        border: 2px solid #333333 !important;
+        border-radius: 0 !important;
+        font-family: 'Space Mono', monospace !important;
+        text-transform: uppercase;
+        box-shadow: none !important;
+      }
+      .leaflet-popup-content { font-size: 12px !important; line-height: 1.6 !important; margin: 12px !important; }
+      .leaflet-popup-tip { display: none !important; }
+      .leaflet-container { background: #000000 !important; font-family: 'Space Mono', monospace !important; }
+      .leaflet-control-zoom a {
+        background: #000000 !important;
+        color: #ffffff !important;
+        border-color: #333333 !important;
+        border-radius: 0 !important;
+      }
+      .leaflet-control-attribution {
+        background: #000000 !important;
+        color: #555555 !important;
+        font-family: 'Space Mono', monospace !important;
+        font-size: 9px !important;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

@@ -1,0 +1,7 @@
+# RL Environment dependencies
+gymnasium>=0.29.1
+numpy>=1.26.0
+torch>=2.2.0
+
+# For evaluation / grading scripts
+scipy>=1.12.0

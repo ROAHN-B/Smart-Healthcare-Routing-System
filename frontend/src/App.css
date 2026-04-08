@@ -1,0 +1,335 @@
+/* ═══════════════════════════════════════════════════════════════
+   SmartER — NOTHING OS THEME
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  --bg:           #000000;
+  --surface:      #0a0a0a;
+  --surface-2:    #121212;
+  --surface-3:    #1a1a1a;
+  --border:       #2a2a2a;
+  --border-2:     #444444;
+  --text:         #ffffff;
+  --text-2:       #cccccc;
+  --text-3:       #777777;
+  
+  /* Nothing OS Accent */
+  --accent:       #f50000; 
+  --accent-2:     #ff3333;
+  --accent-glow:  rgba(245, 0, 0, 0.2);
+  
+  --sidebar-w:    260px;
+  --menubar-h:    48px;
+  --header-h:     56px;
+  
+  --radius:       32px;
+  --radius-sm:    16px;
+  --radius-lg:    48px;
+  
+  --dot-font:     'DotGothic16', sans-serif;
+  --mono-font:    'Space Mono', monospace;
+  --body-font:    'Inter', sans-serif;
+}
+
+/* ── OS Root ──────────────────────────────────────────────────────────────── */
+.os-root {
+  height: 100vh;
+  width: 100vw;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  overflow: hidden;
+  font-family: var(--body-font);
+}
+
+.dot-bg {
+  background-image: radial-gradient(var(--border) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+/* ── Menu Bar ─────────────────────────────────────────────────────────── */
+.menubar {
+  height: var(--menubar-h);
+  background: var(--bg);
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  flex-shrink: 0;
+  z-index: 1000;
+}
+.menubar-left { display: flex; align-items: center; gap: 32px; }
+.app-name { 
+  font-family: var(--dot-font); 
+  font-size: 20px; 
+  color: var(--text); 
+  letter-spacing: 2px;
+}
+.menubar-right { 
+  display: flex; 
+  align-items: center; 
+  gap: 24px; 
+  font-family: var(--mono-font); 
+  font-size: 12px; 
+}
+.status-pill { 
+  border: 1px solid var(--text); 
+  padding: 4px 12px; 
+  border-radius: 20px; 
+  display: flex; 
+  align-items: center; 
+  gap: 8px;
+}
+.pulse-dot { 
+  width: 8px; 
+  height: 8px; 
+  background: var(--accent); 
+  border-radius: 50%; 
+  animation: blink 1s infinite;
+}
+@keyframes blink { 
+  0%, 100% { opacity: 1; } 
+  50% { opacity: 0.2; } 
+}
+
+/* ── Window Frame ─────────────────────────────────────────────────────────── */
+.window-frame {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  background: transparent;
+}
+
+/* ── Sidebar ────────────────────────────────────────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 2px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px;
+}
+
+.sidebar-nav { 
+  flex: 1; 
+  display: flex; 
+  flex-direction: column; 
+  gap: 8px; 
+  margin-top: 16px; 
+}
+
+.sidebar-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  border: 2px solid transparent;
+  background: transparent;
+  color: var(--text-2);
+  font-size: 14px;
+  font-family: var(--mono-font);
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  text-align: left;
+}
+.sidebar-item:hover { 
+  color: var(--text); 
+  border-color: var(--border); 
+}
+.sidebar-item.active { 
+  background: var(--text); 
+  color: var(--bg); 
+}
+
+/* ── Content area ──────────────────────────────────────────────────────────── */
+.content-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.content-header {
+  height: var(--header-h);
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 32px;
+  background: var(--surface);
+}
+.ch-breadcrumb { 
+  font-family: var(--dot-font); 
+  font-size: 18px; 
+  color: var(--text-3); 
+  text-transform: uppercase;
+}
+.ch-page { 
+  color: var(--accent); 
+  margin-left: 8px; 
+}
+
+.content-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 32px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-2) transparent;
+}
+.content-body::-webkit-scrollbar { width: 8px; }
+.content-body::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 4px; }
+
+/* ════════════════════════════════════════════════════════════════
+   SHARED COMPONENTS
+════════════════════════════════════════════════════════════════ */
+
+.glass-card, .kpi-card, .chart-card, .section-card, .sim-card {
+  background: var(--surface);
+  border: 2px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  position: relative;
+}
+
+.status-tag {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  padding: 4px 12px;
+  border: 1px solid var(--text);
+  border-radius: 20px;
+  text-transform: uppercase;
+  display: inline-flex;
+}
+.status-tag.available { background: var(--text); color: var(--bg); }
+.status-tag.busy      { background: var(--accent); color: var(--text); border-color: var(--accent); }
+.status-tag.assigned  { background: transparent; color: var(--text); border: 1px dashed var(--text); }
+.status-tag.pending   { background: transparent; color: var(--text-3); border-color: var(--text-3); }
+
+/* ════════════════════════════════════════════════════════════════
+   DASHBOARD
+════════════════════════════════════════════════════════════════ */
+.dashboard { display: flex; flex-direction: column; gap: 32px; }
+
+.page-title { 
+  font-family: var(--dot-font); 
+  font-size: 32px; 
+  color: var(--text); 
+  margin-bottom: 8px; 
+  text-transform: uppercase; 
+}
+.page-sub { 
+  font-family: var(--mono-font); 
+  color: var(--text-3); 
+  font-size: 13px; 
+}
+
+/* KPIs */
+.kpi-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.kpi-card { display: flex; flex-direction: column; gap: 12px; }
+.kpi-value { 
+  font-family: var(--dot-font); 
+  font-size: 42px; 
+  color: var(--text); 
+}
+.kpi-label { 
+  font-family: var(--mono-font); 
+  font-size: 12px; 
+  color: var(--text-3); 
+  text-transform: uppercase;
+}
+
+/* Charts & Bottom row */
+.charts-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+.bottom-row { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; }
+
+.chart-card-title, .section-title, .sim-card-title { 
+  font-family: var(--mono-font); 
+  font-size: 14px; 
+  font-weight: 700;
+  color: var(--text);
+  text-transform: uppercase;
+}
+.chart-card-sub, .section-count {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 4px;
+}
+
+/* Table */
+.os-table { width: 100%; border-collapse: collapse; margin-top: 16px; }
+.os-table th {
+  font-family: var(--mono-font);
+  font-size: 11px;
+  color: var(--text-3);
+  text-transform: uppercase;
+  text-align: left;
+  padding: 0 12px 12px;
+  border-bottom: 2px solid var(--border);
+}
+.os-table td {
+  font-family: var(--mono-font);
+  font-size: 12px;
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Sim Button */
+.sim-toggle {
+  background: var(--bg);
+  border: 2px solid var(--text);
+  border-radius: 40px;
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  color: var(--text);
+  font-family: var(--mono-font);
+  text-transform: uppercase;
+  margin-top: 16px;
+  transition: all 0.2s;
+}
+.sim-toggle.running { 
+  background: var(--text); 
+  color: var(--bg); 
+}
+
+.sim-stats { display: flex; flex-direction: column; gap: 12px; margin-top: 24px; }
+.sim-stat-row { display: flex; justify-content: space-between; font-family: var(--mono-font); font-size: 11px; }
+.sim-stat-label { color: var(--text-3); }
+
+/* ════════════════════════════════════════════════════════════════
+   MAP VIEW (CSS TRANSITION FIX FOR SMOOTH GLIDING)
+════════════════════════════════════════════════════════════════ */
+.map-view-wrapper { 
+  height: 100%; 
+  display: flex; 
+  flex-direction: column; 
+  border: 2px solid var(--border); 
+  border-radius: var(--radius); 
+  overflow: hidden; 
+}
+.map-topbar { 
+  background: var(--surface); 
+  border-bottom: 2px solid var(--border); 
+  padding: 16px 24px; 
+  font-family: var(--mono-font); 
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.map-body { 
+  flex: 1; 
+  min-height: 0; 
+}
+.map-container { 
+  height: 100%; 
+  background: #000;
+}
+
+/* LEAFLET CSS FIX FOR SMOOTH ANIMATION */
+.leaflet-marker-icon {
+  transition: transform 0.5s linear !important; 
+}

@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smart-healthcare-routing"
+version = "1.0.0"
+description = "AI-Powered Smart Healthcare Routing Environment"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "gymnasium",
+    "numpy",
+    "torch",
+    "openai",
+    "openenv-core>=0.2.0",
+    "fastapi",
+    "uvicorn"
+]
+
+[project.scripts]
+server = "server.app:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["openenv_env*", "rl*", "server*", "backend*"]

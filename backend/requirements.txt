@@ -1,0 +1,16 @@
+# Backend dependencies
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+pydantic==2.7.1
+websockets==12.0
+
+# RL / ML
+torch>=2.2.0
+numpy>=1.26.0
+gymnasium>=0.29.1
+
+
+# Utilities
+python-dotenv==1.0.1
+
+openai
