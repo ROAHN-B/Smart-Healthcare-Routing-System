@@ -2,14 +2,6 @@
 task.py
 =======
 OpenEnv Task Definition for Healthcare Routing RL Environment.
-
-Follows the OpenEnv spec:
-  - task_id, description, tags
-  - reset / step wrappers
-  - grader integration
-
-https://github.com/meta-pytorch/OpenEnv
-https://github.com/huggingface/openenv-course
 """
 
 from dataclasses import dataclass, field
@@ -18,76 +10,59 @@ import numpy as np
 
 from healthcare_env import HealthcareRoutingEnv
 
-
 # ---------------------------------------------------------------------------
-# OpenEnv Task Descriptor
+# 1. Define 3 Distinct Tasks (Required for Phase 2 Validation)
 # ---------------------------------------------------------------------------
 
 @dataclass
-class HealthcareTask:
-    """
-    Metadata descriptor conforming to the OpenEnv task specification.
-    """
-    task_id: str           = "healthcare-routing-v1"
+class HealthcareTaskEasy:
+    task_id: str           = "healthcare-routing-easy"
     version: str           = "1.0.0"
-    description: str       = (
-        "AI-Powered Smart Healthcare Routing & Emergency Management. "
-        "An RL agent must dispatch the optimal ambulance and hospital "
-        "for each incoming emergency patient, maximising survival outcomes "
-        "while minimising response times and wasted resources."
-    )
-    tags: List[str]        = field(default_factory=lambda: [
-        "healthcare", "routing", "multi-objective", "real-world",
-        "emergency-management", "gymnasium", "openenv",
-    ])
-    difficulty: str        = "medium"
-    author: str            = "Healthcare-RL Team"
-    license: str           = "MIT"
-
-    # Environment constructor kwargs
-    env_kwargs: Dict[str, Any] = field(default_factory=dict)
+    description: str       = "Easy routing scenario with 50 steps."
+    tags: List[str]        = field(default_factory=lambda: ["healthcare", "easy"])
+    difficulty: str        = "easy"
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 50})
 
     def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
-        """Instantiate and return the Gymnasium environment."""
         return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
 
+@dataclass
+class HealthcareTaskMedium:
+    task_id: str           = "healthcare-routing-medium"
+    version: str           = "1.0.0"
+    description: str       = "Medium routing scenario with 100 steps."
+    tags: List[str]        = field(default_factory=lambda: ["healthcare", "medium"])
+    difficulty: str        = "medium"
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 100})
+
+    def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
+        return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
+
+@dataclass
+class HealthcareTaskHard:
+    task_id: str           = "healthcare-routing-hard"
+    version: str           = "1.0.0"
+    description: str       = "Hard routing scenario with 200 steps."
+    tags: List[str]        = field(default_factory=lambda: ["healthcare", "hard"])
+    difficulty: str        = "hard"
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 200})
+
+    def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
+        return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
 
 # ---------------------------------------------------------------------------
-# OpenEnv Grader
+# 2. Base Grader Logic
 # ---------------------------------------------------------------------------
 
-class HealthcareGrader:
-    """
-    Evaluates a trained agent (or any callable policy) on the Healthcare task.
-
-    Grading criteria (total: 100 points)
-    -------------------------------------
-    40 pts  Mean episode reward   (linear scale, max at reward >= 120)
-    30 pts  Success rate          (% steps ending in 'success')
-    20 pts  Critical patient care (% critical patients assigned ICU)
-    10 pts  Ambulance utilisation (% dispatches use nearest ambulance)
-    """
-
-    REWARD_BENCHMARK   = 120.0   # reward at which agent scores full 40 pts
-    EVAL_EPISODES      = 20
+class BaseHealthcareGrader:
+    REWARD_BENCHMARK   = 120.0   
+    EVAL_EPISODES      = 10
     EVAL_STEPS_PER_EP  = 50
 
-    def __init__(self, task: Optional[HealthcareTask] = None):
-        self.task = task or HealthcareTask()
+    def __init__(self, task):
+        self.task = task
 
     def grade(self, policy) -> Dict[str, Any]:
-        """
-        Grade a policy.
-
-        Parameters
-        ----------
-        policy : callable
-            Accepts a numpy observation array, returns an integer action.
-
-        Returns
-        -------
-        dict with keys: score (0–100), breakdown, mean_reward, success_rate
-        """
         env = self.task.make_env()
 
         total_reward    = 0.0
@@ -95,7 +70,6 @@ class HealthcareGrader:
         success_count   = 0
         critical_icu    = 0
         critical_total  = 0
-        nearest_amb     = 0
 
         for ep in range(self.EVAL_EPISODES):
             obs, _ = env.reset()
@@ -109,12 +83,9 @@ class HealthcareGrader:
 
                 if info.get("outcome") == "success":
                     success_count += 1
-
-                    # Track ICU assignment for critical patients
                     if env.patient["severity"] >= 8:
                         critical_total += 1
                         hosp = env.hospitals[info["hospital_id"]]
-                        # Check if ICU was available (before step consumed it)
                         if hosp.get("icu_available", 0) > 0 or hosp["icu_beds"] > 0:
                             critical_icu += 1
 
@@ -127,17 +98,20 @@ class HealthcareGrader:
         success_rate = success_count / max(total_steps, 1)
         icu_rate     = critical_icu  / max(critical_total, 1)
 
-        # ── Scoring ───────────────────────────────────────────────────────
+        # Base calculations
         reward_score = min(40, max(0, (mean_reward / self.REWARD_BENCHMARK) * 40))
         success_score = success_rate * 30
         icu_score     = icu_rate     * 20
-        amb_score     = 10.0          # placeholder (full credit if agent runs)
+        amb_score     = 10.0          
 
-        total_score = reward_score + success_score + icu_score + amb_score
+        total_score_100 = reward_score + success_score + icu_score + amb_score
+
+        # --- MANDATORY PHASE 2 FIX: Clamp score strictly to (0.01, 0.99) ---
+        final_score = min(max(total_score_100 / 100.0, 0.01), 0.99)
 
         return {
-            "score":        round(total_score, 2),
-            "max_score":    100,
+            "score":        round(final_score, 4),
+            "max_score":    1.0,
             "mean_reward":  round(mean_reward, 2),
             "success_rate": round(success_rate, 4),
             "icu_rate":     round(icu_rate, 4),
@@ -149,27 +123,18 @@ class HealthcareGrader:
             },
         }
 
-
 # ---------------------------------------------------------------------------
-# Quick sanity check
+# 3. Expose 3 Graders to OpenEnv
 # ---------------------------------------------------------------------------
 
-if __name__ == "__main__":
-    task   = HealthcareTask()
-    env    = task.make_env(render_mode="human")
-    grader = HealthcareGrader(task)
+class HealthcareGraderEasy(BaseHealthcareGrader):
+    def __init__(self, task=None):
+        super().__init__(task or HealthcareTaskEasy())
 
-    # Random policy baseline
-    def random_policy(obs):
-        return env.action_space.sample()
+class HealthcareGraderMedium(BaseHealthcareGrader):
+    def __init__(self, task=None):
+        super().__init__(task or HealthcareTaskMedium())
 
-    print("=== Grading RANDOM policy (baseline) ===")
-    result = grader.grade(random_policy)
-    for k, v in result.items():
-        print(f"  {k}: {v}")
-
-    # Greedy policy baseline
-    print("\n=== Grading GREEDY policy (rule-based baseline) ===")
-    result2 = grader.grade(env.get_greedy_action)
-    for k, v in result2.items():
-        print(f"  {k}: {v}")
+class HealthcareGraderHard(BaseHealthcareGrader):
+    def __init__(self, task=None):
+        super().__init__(task or HealthcareTaskHard())
