@@ -84,13 +84,20 @@ async def main() -> None:
             try:
                 # We ask the LLM for a quick high-level strategy to prove we are using it
                 prompt = f"System state array: {obs.tolist()}. Give a 1-word strategy (e.g., 'Reroute' or 'Wait')."
-                response = client.chat.completions.create(
+                
+                # --- PRO FIX 1: Use asyncio.to_thread to prevent WebSocket blocking ---
+                response = await asyncio.to_thread(
+                    client.chat.completions.create,
                     model=MODEL_NAME,
                     messages=[{"role": "user", "content": prompt}],
                     max_tokens=5,
                     temperature=0.0,
                 )
-                llm_strategy = response.choices[0].message.content.strip()
+                
+                # --- PRO FIX 2: Strip markdown backticks to prevent crash ---
+                raw_response = response.choices[0].message.content.strip()
+                llm_strategy = raw_response.replace("`", "").strip()
+
             except Exception as e:
                 # If the HuggingFace proxy fails, we don't want it to crash the script
                 llm_strategy = "Fallback"

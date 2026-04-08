@@ -12,36 +12,39 @@ RUN npm run build
 FROM python:3.10-slim
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies (added curl for the healthcheck)
 RUN apt-get update && apt-get install -y \
     build-essential \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Backend Dependencies
+
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy RL, Environment, and new Server modules
+
 COPY openenv_env/ ./openenv_env/
 COPY rl/ ./rl/
 COPY backend/ ./backend/
 COPY server/ ./server/
 
-# Copy scripts and OpenEnv configuration files
+
 COPY inference.py pyproject.toml uv.lock ./
 
-# Install the project as a package (This automatically installs openenv-core, openai, torch, etc.)
+
 RUN pip install -e .
 
-# Copy built frontend from Stage 1 to a 'static' folder in backend
+
 COPY --from=frontend-builder /app/frontend/dist ./static
 
-# Set Environment Variables for RL pathing
+
 ENV PYTHONPATH=/app:/app/openenv_env:/app/rl
 ENV PORT=7860
 
-# Hugging Face runs on port 7860
+
 EXPOSE 7860
 
-# Start FastAPI and serve everything
+HEALTHCHECK --interval=10s --timeout=3s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:7860/ || exit 1
+
 CMD ["sh", "-c", "python -u inference.py & uvicorn backend.api.main:app --host 0.0.0.0 --port 7860"]
