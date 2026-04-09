@@ -29,31 +29,63 @@ function createTextSprite(message) {
   return sprite;
 }
 
-// UPGRADED: Hospital is now an intersection Landing Pad so ambulances can park on it
+// UPGRADED: Tall Skyscraper Hospital with an open "Drive-Through" base!
 const createHospital = (color, name) => {
   const group = new THREE.Group();
-  
-  const padGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.2, 32);
-  const padMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 100 });
-  const pad = new THREE.Mesh(padGeo, padMat);
-  pad.position.y = 0.1;
 
-  const ringGeo = new THREE.TorusGeometry(2.2, 0.15, 16, 32);
-  const ringMat = new THREE.MeshBasicMaterial({ color: color });
-  const ring = new THREE.Mesh(ringGeo, ringMat);
-  ring.position.y = 0.2;
-  ring.rotation.x = Math.PI / 2;
+  const mainColor = 0x0a1526;
+  const buildMat = new THREE.MeshPhongMaterial({ color: mainColor, transparent: true, opacity: 0.95, shininess: 100 });
+  
+  // We name the glowing materials so we can easily change their color (Green/Red) in the animation loop
+  const edgeMat = new THREE.LineBasicMaterial({ color: color, transparent: true, opacity: 0.8 });
+  edgeMat.name = "hospitalColorMat";
 
   const crossMat = new THREE.MeshBasicMaterial({ color: color });
-  const vCross = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.5, 0.2), crossMat);
-  vCross.position.set(0, 3, 0);
-  const hCross = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.8, 0.2), crossMat);
-  hCross.position.set(0, 3, 0);
+  crossMat.name = "hospitalColorMat";
+
+  // 1. Four Pillars (Creates the open ER drop-off archway underneath)
+  const pillarGeo = new THREE.BoxGeometry(0.8, 4, 0.8);
+  const positions = [
+    [-1.4, 2, -1.4], [1.4, 2, -1.4],
+    [-1.4, 2, 1.4], [1.4, 2, 1.4]
+  ];
+  
+  positions.forEach(pos => {
+    const pillar = new THREE.Mesh(pillarGeo, buildMat);
+    pillar.position.set(...pos);
+    
+    const pEdges = new THREE.EdgesGeometry(pillarGeo);
+    const pLines = new THREE.LineSegments(pEdges, edgeMat);
+    pLines.position.set(...pos);
+    
+    group.add(pillar, pLines);
+  });
+
+  // 2. Main Tower Building (Sits on top of the pillars)
+  const bodyGeo = new THREE.BoxGeometry(3.6, 10, 3.6);
+  const building = new THREE.Mesh(bodyGeo, buildMat);
+  building.position.set(0, 9, 0); // Spans from y=4 to y=14
+
+  const edges = new THREE.EdgesGeometry(bodyGeo);
+  const lines = new THREE.LineSegments(edges, edgeMat);
+  lines.position.set(0, 9, 0);
+
+  // 3. Glowing Medical Cross in the center of the tower
+  const vCross = new THREE.Mesh(new THREE.BoxGeometry(1.0, 3.5, 3.8), crossMat);
+  vCross.position.set(0, 9, 0);
+  const hCross = new THREE.Mesh(new THREE.BoxGeometry(3.5, 1.0, 3.8), crossMat);
+  hCross.position.set(0, 9, 0);
+
+  // 4. Helipad Roof & Label
+  const roofGeo = new THREE.CylinderGeometry(1.5, 1.5, 0.2, 16);
+  const roofMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.set(0, 14.1, 0);
 
   const label = createTextSprite(name);
-  label.position.set(0, 6.0, 0);
+  label.position.set(0, 16.5, 0);
 
-  group.add(pad, ring, vCross, hCross, label);
+  group.add(building, lines, vCross, hCross, roof, label);
   return group;
 };
 
@@ -74,7 +106,6 @@ const createAmbulance = (color) => {
     group.add(housing, glow);
   });
   group.add(core, sideTrimL, sideTrimR, canopy, lightL, lightR);
-  // Slightly smaller to fit perfectly on the new roads
   group.scale.set(0.55, 0.55, 0.55); 
   return group;
 };
@@ -121,7 +152,6 @@ export default function RadarView3D() {
     dirLight.position.set(20, 50, 20);
     scene.add(dirLight);
 
-    // UPGRADED: Dark Asphalt Ground Floor
     const ground = new THREE.Mesh(
         new THREE.PlaneGeometry(MAP_SIZE + 10, MAP_SIZE + 10),
         new THREE.MeshPhongMaterial({ color: 0x050505, depthWrite: false })
@@ -129,23 +159,18 @@ export default function RadarView3D() {
     ground.rotation.x = -Math.PI / 2;
     scene.add(ground);
 
-    // Glowing Neon Road Lines
     const gridHelper = new THREE.GridHelper(MAP_SIZE, 20, 0x004488, 0x001133);
     gridHelper.position.y = 0.01;
     scene.add(gridHelper);
 
-    // UPGRADED: Structured City Blocks (Almost Opaque)
     const cityGroup = new THREE.Group();
-    // 95% opacity, dark glossy blue-black for solid building feel
     const buildMat = new THREE.MeshPhongMaterial({ color: 0x0a0f1a, transparent: true, opacity: 0.95, shininess: 80 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.4 });
     
-    // Create buildings strictly INSIDE the grid blocks to leave the grid lines as empty roads
     for (let x = -MAP_SIZE/2 + 2.5; x < MAP_SIZE/2; x += 5) {
         for (let z = -MAP_SIZE/2 + 2.5; z < MAP_SIZE/2; z += 5) {
-            if (Math.random() > 0.1) { // 90% chance of building to make it dense
+            if (Math.random() > 0.1) { 
                 const h = 4 + Math.random() * 12;
-                // Width is 3.2, block is 5.0 -> leaves exactly 1.8 units of open road space!
                 const geo = new THREE.BoxGeometry(3.2, h, 3.2);
                 const mesh = new THREE.Mesh(geo, buildMat);
                 mesh.position.set(x, h/2, z);
@@ -197,10 +222,13 @@ export default function RadarView3D() {
           scene.add(mesh);
           meshesRef.current.hospitals[h.id] = mesh;
         } else {
+          // Dynamic color updating for full/available hospitals (safely searches for our named materials)
           const mesh = meshesRef.current.hospitals[h.id];
-          mesh.children[1].material.color.setHex(colorHex); 
-          mesh.children[2].material.color.setHex(colorHex); 
-          mesh.children[3].material.color.setHex(colorHex); 
+          mesh.traverse((child) => {
+            if (child.material && child.material.name === "hospitalColorMat") {
+                child.material.color.setHex(colorHex);
+            }
+          });
         }
       });
 
@@ -222,7 +250,6 @@ export default function RadarView3D() {
 
         const mesh = meshesRef.current.patients[p.id];
         mesh.position.copy(project3D(p.lat, p.lon));
-        // Elevate patient slightly so they don't clip into the floor
         mesh.position.y = 1.0; 
         const scale = 1 + Math.sin(time) * 0.15;
         mesh.scale.set(scale, scale, scale);
@@ -239,7 +266,6 @@ export default function RadarView3D() {
         }
       });
 
-      // Ambulances retain their perfectly smooth LERP movement
       ambulances.forEach(a => {
         if (!meshesRef.current.ambulances[a.id]) {
           const mesh = createAmbulance(0x22aaff);
