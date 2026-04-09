@@ -1,5 +1,5 @@
 """
-main.py  –  FastAPI Backend (Strict Grid Snapping & MySQL Integrated)
+main.py  –  FastAPI Backend (Strict Grid Snapping - MySQL Removed)
 =====================================================================
 """
 
@@ -20,8 +20,6 @@ from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-import mysql.connector
-
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(BACKEND_DIR, "..", "openenv_env"))
 sys.path.insert(0, os.path.join(BACKEND_DIR, "..", "rl"))
@@ -34,7 +32,6 @@ LON_MIN, LON_MAX = 75.85, 76.00
 
 # ── GRID SNAPPING LOGIC (Forces ambulances onto roads) ──
 def snap_val(val, min_v, max_v, steps=20):
-    """Snaps any floating coordinate exactly to the 20x20 road grid."""
     step = (max_v - min_v) / steps
     idx = round((val - min_v) / step)
     return min_v + idx * step
@@ -82,43 +79,6 @@ except Exception as e:
     dqn_agent = None
     print(f"[Backend] DQN unavailable ({e}) – using greedy fallback")
 
-# ── MYSQL HELPER FUNCTIONS ──
-def save_dispatch_to_db(patient_data: dict, assignment_data: dict):
-    try:
-        db = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"),
-            user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASS", "Rohan@54321"), # UPDATE THIS
-            database=os.getenv("DB_NAME", "smart_healthcare_db"),
-            port=3306
-        )
-        cursor = db.cursor()
-
-        sql_patient = """
-            INSERT INTO recent_dispatches (patient_id, severity, status, latitude, longitude)
-            VALUES (%s, %s, %s, %s, %s)
-            ON DUPLICATE KEY UPDATE status=VALUES(status)
-        """
-        cursor.execute(sql_patient, (
-            patient_data["id"], patient_data["severity_label"], patient_data["status"],
-            patient_data["lat"], patient_data["lon"]
-        ))
-
-        sql_routing = """
-            INSERT INTO simulation_routing (patient_id, ambulance_id, hospital_id, distance_km, routing_score)
-            VALUES (%s, %s, %s, %s, %s)
-        """
-        routing_score = 0.95 if assignment_data.get("model_used") == "DQN" else 0.50
-        cursor.execute(sql_routing, (
-            patient_data["id"], assignment_data["ambulance"]["id"], assignment_data["hospital"]["id"],
-            assignment_data["dist_to_hospital"], routing_score
-        ))
-
-        db.commit()
-    except Exception as e:
-        print(f"[DB Error] Could not save to MySQL: {e}")
-    finally:
-        if 'db' in locals() and db.is_connected(): cursor.close(); db.close()
 
 # ── FASTAPI SETUP ──
 simulation_running = False
@@ -132,25 +92,6 @@ class PatientIn(BaseModel):
     lon:            float         = Field(...)
     emergency_type: str           = Field(default="General")
     notes:          Optional[str] = None
-
-def save_manual_patient_to_db(patient_in: PatientIn, generated_id: str):
-    if patient_in.name.startswith("Sim-"): return
-    try:
-        db = mysql.connector.connect(
-            host=os.getenv("DB_HOST", "localhost"), user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASS", "Rohan@54321"), # UPDATE THIS
-            database=os.getenv("DB_NAME", "smart_healthcare_db"), port=3306
-        )
-        cursor = db.cursor()
-        sql = """
-            INSERT INTO manual_patients (patient_id, patient_name, severity, latitude, longitude, emergency_type, notes)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
-        """
-        cursor.execute(sql, (generated_id, patient_in.name, patient_in.severity, patient_in.lat, patient_in.lon, patient_in.emergency_type, patient_in.notes))
-        db.commit()
-    except Exception as e: print(f"\n❌ FATAL DATABASE ERROR: {e}\n")
-    finally:
-        if 'db' in locals() and db.is_connected(): cursor.close(); db.close()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -208,8 +149,6 @@ def add_patient(patient_in: PatientIn):
     # Snap incoming coordinates to the grid so ambulances never leave the road!
     patient_in.lat = snap_lat(patient_in.lat)
     patient_in.lon = snap_lon(patient_in.lon)
-    
-    save_manual_patient_to_db(patient_in, patient_id)
 
     patient = {
         **patient_in.dict(), "id": patient_id, "status": "pending", "timestamp": time.time(),
@@ -231,7 +170,6 @@ def add_patient(patient_in: PatientIn):
 
     patient["status"] = "assigned"
     ASSIGNMENTS.append({"patient_id": patient_id, "hospital_id": h["id"], "ambulance_id": a["id"]})
-    save_dispatch_to_db(patient, assignment)
     return {"patient": patient, "assignment": assignment}
 
 @app.get("/get_live_tracking")
