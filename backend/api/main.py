@@ -88,7 +88,7 @@ def save_dispatch_to_db(patient_data: dict, assignment_data: dict):
         db = mysql.connector.connect(
             host=os.getenv("DB_HOST", "localhost"),
             user=os.getenv("DB_USER", "root"),
-            password=os.getenv("DB_PASS", "your_actual_password"), # UPDATE THIS
+            password=os.getenv("DB_PASS", "Rohan@54321"), # UPDATE THIS
             database=os.getenv("DB_NAME", "smart_healthcare_db"),
             port=3306
         )
