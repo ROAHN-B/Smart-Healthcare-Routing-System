@@ -15,8 +15,7 @@ dependencies = [
     "openai",
     "openenv-core>=0.2.0",
     "fastapi",
-    "uvicorn",
-    "mysql-connector-python"
+    "uvicorn"
 ]
 
 [project.scripts]
