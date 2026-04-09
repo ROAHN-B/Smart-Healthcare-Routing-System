@@ -29,18 +29,31 @@ function createTextSprite(message) {
   return sprite;
 }
 
+// UPGRADED: Hospital is now an intersection Landing Pad so ambulances can park on it
 const createHospital = (color, name) => {
   const group = new THREE.Group();
-  const bodyMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 100 });
-  const building = new THREE.Mesh(new THREE.BoxGeometry(4, 8, 4), bodyMat); building.position.y = 4;
-  const edges = new THREE.EdgesGeometry(new THREE.BoxGeometry(4.1, 8.1, 4.1));
-  const line = new THREE.LineSegments(edges, new THREE.LineBasicMaterial({ color: color })); line.position.y = 4;
-  const pad = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, 0.2, 16), new THREE.MeshBasicMaterial({ color: 0x333333 })); pad.position.y = 8.1;
+  
+  const padGeo = new THREE.CylinderGeometry(2.5, 2.5, 0.2, 32);
+  const padMat = new THREE.MeshPhongMaterial({ color: 0x111111, shininess: 100 });
+  const pad = new THREE.Mesh(padGeo, padMat);
+  pad.position.y = 0.1;
+
+  const ringGeo = new THREE.TorusGeometry(2.2, 0.15, 16, 32);
+  const ringMat = new THREE.MeshBasicMaterial({ color: color });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  ring.position.y = 0.2;
+  ring.rotation.x = Math.PI / 2;
+
   const crossMat = new THREE.MeshBasicMaterial({ color: color });
-  const vCross = new THREE.Mesh(new THREE.BoxGeometry(0.6, 1.5, 0.2), crossMat); vCross.position.set(0, 9, 0);
-  const hCross = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.6, 0.2), crossMat); hCross.position.set(0, 9, 0);
-  const label = createTextSprite(name); label.position.set(0, 11.5, 0);
-  group.add(building, line, pad, vCross, hCross, label);
+  const vCross = new THREE.Mesh(new THREE.BoxGeometry(0.8, 2.5, 0.2), crossMat);
+  vCross.position.set(0, 3, 0);
+  const hCross = new THREE.Mesh(new THREE.BoxGeometry(2.5, 0.8, 0.2), crossMat);
+  hCross.position.set(0, 3, 0);
+
+  const label = createTextSprite(name);
+  label.position.set(0, 6.0, 0);
+
+  group.add(pad, ring, vCross, hCross, label);
   return group;
 };
 
@@ -61,7 +74,8 @@ const createAmbulance = (color) => {
     group.add(housing, glow);
   });
   group.add(core, sideTrimL, sideTrimR, canopy, lightL, lightR);
-  group.scale.set(0.7, 0.7, 0.7); 
+  // Slightly smaller to fit perfectly on the new roads
+  group.scale.set(0.55, 0.55, 0.55); 
   return group;
 };
 
@@ -88,7 +102,7 @@ export default function RadarView3D() {
     const initialHeight = containerRef.current.clientHeight || window.innerHeight;
 
     const camera = new THREE.PerspectiveCamera(45, initialWidth / initialHeight, 1, 1000);
-    camera.position.set(0, 80, 80); 
+    camera.position.set(0, 60, 70); 
     camera.lookAt(0, 0, 0);
     
     const renderer = new THREE.WebGLRenderer({ antialias: true });
@@ -106,18 +120,33 @@ export default function RadarView3D() {
     const dirLight = new THREE.DirectionalLight(0xffffff, 3);
     dirLight.position.set(20, 50, 20);
     scene.add(dirLight);
-    scene.add(new THREE.GridHelper(MAP_SIZE, 50, "#222", "#111"));
 
-    // ── PROCEDURAL HOLOGRAPHIC CITYSCAPE ──
+    // UPGRADED: Dark Asphalt Ground Floor
+    const ground = new THREE.Mesh(
+        new THREE.PlaneGeometry(MAP_SIZE + 10, MAP_SIZE + 10),
+        new THREE.MeshPhongMaterial({ color: 0x050505, depthWrite: false })
+    );
+    ground.rotation.x = -Math.PI / 2;
+    scene.add(ground);
+
+    // Glowing Neon Road Lines
+    const gridHelper = new THREE.GridHelper(MAP_SIZE, 20, 0x004488, 0x001133);
+    gridHelper.position.y = 0.01;
+    scene.add(gridHelper);
+
+    // UPGRADED: Structured City Blocks (Almost Opaque)
     const cityGroup = new THREE.Group();
-    const buildMat = new THREE.MeshPhongMaterial({ color: 0x050510, transparent: true, opacity: 0.8 });
-    const edgeMat = new THREE.LineBasicMaterial({ color: 0x004488, transparent: true, opacity: 0.4 });
+    // 95% opacity, dark glossy blue-black for solid building feel
+    const buildMat = new THREE.MeshPhongMaterial({ color: 0x0a0f1a, transparent: true, opacity: 0.95, shininess: 80 });
+    const edgeMat = new THREE.LineBasicMaterial({ color: 0x0088ff, transparent: true, opacity: 0.4 });
     
-    for (let x = -MAP_SIZE/2 + 4; x < MAP_SIZE/2; x += 8) {
-        for (let z = -MAP_SIZE/2 + 4; z < MAP_SIZE/2; z += 8) {
-            if (Math.random() > 0.3) { 
-                const h = 2 + Math.random() * 5;
-                const geo = new THREE.BoxGeometry(5, h, 5);
+    // Create buildings strictly INSIDE the grid blocks to leave the grid lines as empty roads
+    for (let x = -MAP_SIZE/2 + 2.5; x < MAP_SIZE/2; x += 5) {
+        for (let z = -MAP_SIZE/2 + 2.5; z < MAP_SIZE/2; z += 5) {
+            if (Math.random() > 0.1) { // 90% chance of building to make it dense
+                const h = 4 + Math.random() * 12;
+                // Width is 3.2, block is 5.0 -> leaves exactly 1.8 units of open road space!
+                const geo = new THREE.BoxGeometry(3.2, h, 3.2);
                 const mesh = new THREE.Mesh(geo, buildMat);
                 mesh.position.set(x, h/2, z);
                 
@@ -170,12 +199,11 @@ export default function RadarView3D() {
         } else {
           const mesh = meshesRef.current.hospitals[h.id];
           mesh.children[1].material.color.setHex(colorHex); 
+          mesh.children[2].material.color.setHex(colorHex); 
           mesh.children[3].material.color.setHex(colorHex); 
-          mesh.children[4].material.color.setHex(colorHex); 
         }
       });
 
-      // FIX 2: Store active IDs to track exactly which models to keep rendered
       const activePatientIds = new Set();
 
       patients.forEach(p => {
@@ -185,7 +213,7 @@ export default function RadarView3D() {
 
         if (!meshesRef.current.patients[p.id]) {
           const mesh = new THREE.Mesh(
-            new THREE.SphereGeometry(1.2, 16, 16), 
+            new THREE.SphereGeometry(0.8, 16, 16), 
             new THREE.MeshBasicMaterial({ color: 0xff2222, wireframe: true })
           );
           scene.add(mesh);
@@ -194,23 +222,24 @@ export default function RadarView3D() {
 
         const mesh = meshesRef.current.patients[p.id];
         mesh.position.copy(project3D(p.lat, p.lon));
+        // Elevate patient slightly so they don't clip into the floor
+        mesh.position.y = 1.0; 
         const scale = 1 + Math.sin(time) * 0.15;
         mesh.scale.set(scale, scale, scale);
         mesh.rotation.y += 0.02;
       });
 
-      // FIX 2: Prevent the WebGL Memory Leak!
-      // Destroys geometry and materials of patients who have been picked up/admitted
       Object.keys(meshesRef.current.patients).forEach(id => {
         if (!activePatientIds.has(id)) {
           const mesh = meshesRef.current.patients[id];
           scene.remove(mesh);
-          mesh.geometry.dispose();  // Critical for GPU memory
-          mesh.material.dispose();  // Critical for GPU memory
+          mesh.geometry.dispose();  
+          mesh.material.dispose();  
           delete meshesRef.current.patients[id];
         }
       });
 
+      // Ambulances retain their perfectly smooth LERP movement
       ambulances.forEach(a => {
         if (!meshesRef.current.ambulances[a.id]) {
           const mesh = createAmbulance(0x22aaff);
@@ -253,7 +282,6 @@ export default function RadarView3D() {
       ws.onmessage = (e) => { 
         try { 
           const parsed = JSON.parse(e.data); 
-          // FIX 2: Filter out admitted patients from websocket data instantly
           if (parsed.patients) {
             parsed.patients = parsed.patients.filter(p => p.status !== "admitted");
           }
