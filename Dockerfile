@@ -34,10 +34,6 @@ COPY --from=frontend-builder /app/frontend/dist ./static
 
 ENV PATH="/app/.venv/bin:$PATH"
 
-
-RUN uv pip install mysql-connector-python
-
-
 ENV PYTHONPATH=/app:/app/openenv_env:/app/rl
 ENV PORT=7860
 
