@@ -11,7 +11,6 @@ export default function RadarView({ isActive }) {
   const dataRef = useRef({ hospitals: [], ambulances: [], patients: [] });
   const animFrameRef = useRef(null);
   
-  // Track sequential patient numbers so we get "PATIENT-1", "PATIENT-2"
   const patientCounters = useRef({});
   const nextPatientNum = useRef(1);
 
@@ -57,13 +56,11 @@ export default function RadarView({ isActive }) {
       ctx.shadowBlur = 15;
       ctx.shadowColor = ctx.fillStyle;
       
-      // Draw outer box
       ctx.fillRect(x - boxSize/2, y - boxSize/2, boxSize, boxSize);
       
-      // Draw inner medical cross
       ctx.fillStyle = "#000000";
-      ctx.fillRect(x - 2, y - 8, 4, 16); // Vertical line
-      ctx.fillRect(x - 8, y - 2, 16, 4); // Horizontal line
+      ctx.fillRect(x - 2, y - 8, 4, 16); 
+      ctx.fillRect(x - 8, y - 2, 16, 4); 
 
       ctx.shadowBlur = 0;
       ctx.fillStyle = "#ffffff";
@@ -76,9 +73,7 @@ export default function RadarView({ isActive }) {
     const pulseRadius = Math.abs(Math.sin(time)) * 6 + 6; 
     
     (data.patients || []).forEach(p => {
-      if (p.status === "admitted") return;
-      
-      // Assign sequential ID if new
+      // "admitted" patients are already filtered out by WebSocket handler for performance
       if (!patientCounters.current[p.id]) {
         patientCounters.current[p.id] = nextPatientNum.current++;
       }
@@ -94,13 +89,12 @@ export default function RadarView({ isActive }) {
       ctx.shadowColor = ctx.fillStyle;
       ctx.fill();
 
-      // If waiting, draw a tiny exclamation mark inside
       if (!isPickedUp) {
         ctx.fillStyle = "#ffffff";
         ctx.font = "bold 10px Arial";
         ctx.textAlign = "center";
         ctx.fillText("!", x, y + 3);
-        ctx.textAlign = "left"; // reset
+        ctx.textAlign = "left"; 
       }
 
       ctx.shadowBlur = 0;
@@ -120,7 +114,7 @@ export default function RadarView({ isActive }) {
         const pt = data.patients.find(p => p.id === a.assigned_patient);
         if (pt) {
           let targetPos = null;
-          let lineColor = "#3b82f6"; // Blue path to patient
+          let lineColor = "#3b82f6";
 
           if (a.status === "en_route_to_patient") {
             targetPos = project(pt.lat, pt.lon, width, height);
@@ -130,12 +124,11 @@ export default function RadarView({ isActive }) {
             const hosp = data.hospitals[hospIndex];
             if (hosp) {
               targetPos = project(hosp.lat, hosp.lon, width, height);
-              lineColor = "#22c55e"; // Green path to hospital
+              lineColor = "#22c55e"; 
               destLabel = `[DEST: HOSP-${hospIndex + 1}]`;
             }
           }
 
-          // Draw the dotted path
           if (targetPos) {
             ctx.beginPath();
             ctx.moveTo(x, y);
@@ -153,7 +146,6 @@ export default function RadarView({ isActive }) {
       ctx.shadowBlur = isMoving ? 15 : 0;
       ctx.shadowColor = ctx.fillStyle;
       
-      // Draw Ambulance as a sturdy triangle
       ctx.beginPath();
       ctx.moveTo(x, y - 12);
       ctx.lineTo(x + 10, y + 8);
@@ -161,7 +153,6 @@ export default function RadarView({ isActive }) {
       ctx.closePath();
       ctx.fill();
 
-      // Ambulance Label
       ctx.shadowBlur = 0;
       ctx.fillStyle = "#ffffff";
       ctx.font = "10px var(--mono-font, monospace)";
@@ -192,7 +183,12 @@ export default function RadarView({ isActive }) {
         const ws = new WebSocket(wsUrl);
         ws.onmessage = (e) => {
           try {
-            dataRef.current = JSON.parse(e.data);
+            const parsed = JSON.parse(e.data);
+            // FIX 2: Filter out admitted patients immediately to prevent 60fps render bloat
+            if (parsed.patients) {
+              parsed.patients = parsed.patients.filter(p => p.status !== "admitted");
+            }
+            dataRef.current = parsed;
           } catch (err) {}
         };
         ws.onclose = () => setTimeout(connectWs, 2000);

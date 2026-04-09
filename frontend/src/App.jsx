@@ -18,14 +18,17 @@ export default function App() {
   const [activeTab, setActiveTab] = useState("dashboard");
   const [simRunning, setSimRunning] = useState(false);
 
-  // Toggle the simulation engine on the backend
+  // FIX 1: Optimistic UI Update for instant, smooth toggling
   const toggleSim = useCallback(async () => {
+    const nextState = !simRunning;
+    setSimRunning(nextState); // Update UI instantly
+    
     try { 
-      await fetch(`${API}/simulation/${simRunning ? "stop" : "start"}`); 
+      await fetch(`${API}/simulation/${nextState ? "start" : "stop"}`); 
     } catch (e) {
-      console.warn("Backend unreached, toggling local sim state.", e);
+      console.warn("Backend unreached, reverting local sim state.", e);
+      setSimRunning(!nextState); // Revert safely if it fails
     }
-    setSimRunning(s => !s);
   }, [simRunning]);
 
   return (

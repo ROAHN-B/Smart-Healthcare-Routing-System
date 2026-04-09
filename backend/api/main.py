@@ -1,5 +1,5 @@
 """
-main.py  –  FastAPI Backend (Solapur Optimized & WebSocket Fixed)
+main.py  –  FastAPI Backend (Solapur Optimized & MySQL Integrated)
 =================================================================
 """
 
@@ -20,15 +20,17 @@ from pydantic import BaseModel, Field
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 
-# ── RL imports ──
+
+import mysql.connector
+
+
 BACKEND_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(BACKEND_DIR, "..", "openenv_env"))
 sys.path.insert(0, os.path.join(BACKEND_DIR, "..", "rl"))
 
 from healthcare_env import HealthcareRoutingEnv, haversine_distance, compute_eta
 
-# ── IN-MEMORY DATABASE (SOLAPUR, MAHARASHTRA) ──
-# ── IN-MEMORY DATABASE (SPREAD ACROSS SOLAPUR GRID) ──
+
 HOSPITALS: List[Dict] = [
     {"id": "h0", "name": "Ashwini Hospital",         "lat": 17.7300, "lon": 75.9700, "total_beds": 100, "beds_available": 72, "icu_beds": 20, "icu_available": 14, "wait_time": 10, "address": "North-East Sector"},
     {"id": "h1", "name": "Markandey Hospital",       "lat": 17.7200, "lon": 75.8800, "total_beds": 80,  "beds_available": 55, "icu_beds": 15, "icu_available": 9,  "wait_time": 15, "address": "North-West Sector"},
@@ -47,11 +49,11 @@ AMBULANCES: List[Dict] = [
 PATIENTS: Dict[str, Dict] = {}
 ASSIGNMENTS: List[Dict]   = []
 
-# ── RL GLOBAL BOUNDS ──
+
 LAT_MIN, LAT_MAX = 17.60, 17.75
 LON_MIN, LON_MAX = 75.85, 76.00
 
-# ── RL MODEL LOADER ──
+
 rl_env: Optional[HealthcareRoutingEnv] = None
 try:
     import torch
@@ -70,7 +72,110 @@ except Exception as e:
     dqn_agent = None
     print(f"[Backend] DQN unavailable ({e}) – using greedy fallback")
 
-# ── FASTAPI SETUP ──
+
+def save_dispatch_to_db(patient_data: dict, assignment_data: dict):
+    """Saves the routing decisions directly to MySQL asynchronously-safe."""
+    try:
+        
+        db = mysql.connector.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASS", "Rohan@54321"), 
+            database=os.getenv("DB_NAME", "smart_healthcare_db"),
+            port=3306
+        )
+        cursor = db.cursor()
+
+        
+        sql_patient = """
+            INSERT INTO recent_dispatches (patient_id, severity, status, latitude, longitude)
+            VALUES (%s, %s, %s, %s, %s)
+            ON DUPLICATE KEY UPDATE status=VALUES(status)
+        """
+        cursor.execute(sql_patient, (
+            patient_data["id"], 
+            patient_data["severity_label"], 
+            patient_data["status"],
+            patient_data["lat"], 
+            patient_data["lon"]
+        ))
+
+       
+        sql_routing = """
+            INSERT INTO simulation_routing (patient_id, ambulance_id, hospital_id, distance_km, routing_score)
+            VALUES (%s, %s, %s, %s, %s)
+        """
+        # Assign a mock DQN confidence score based on the model used
+        routing_score = 0.95 if assignment_data.get("model_used") == "DQN" else 0.50
+        
+        cursor.execute(sql_routing, (
+            patient_data["id"],
+            assignment_data["ambulance"]["id"],
+            assignment_data["hospital"]["id"],
+            assignment_data["dist_to_hospital"],
+            routing_score
+        ))
+
+        db.commit()
+        print(f"[DB] Successfully logged dispatch for {patient_data['id']}")
+
+    except Exception as e:
+       
+        print(f"[DB Error] Could not save to MySQL: {e}")
+    finally:
+        if 'db' in locals() and db.is_connected():
+            cursor.close()
+            db.close()
+
+class PatientIn(BaseModel):
+    name:           str           = Field(default="Unknown Patient")
+    severity:       float         = Field(..., ge=1, le=10)
+    lat:            float         = Field(...)
+    lon:            float         = Field(...)
+    emergency_type: str           = Field(default="General")
+    notes:          Optional[str] = None
+
+# ── MYSQL HELPER FOR MANUAL PATIENTS ──
+def save_manual_patient_to_db(patient_in: PatientIn, generated_id: str):
+    
+    if patient_in.name.startswith("Sim-"):
+        return
+
+    try:
+        db = mysql.connector.connect(
+            host=os.getenv("DB_HOST", "localhost"),
+            user=os.getenv("DB_USER", "root"),
+            password=os.getenv("DB_PASS", "Rohan@54321"), 
+            database=os.getenv("DB_NAME", "smart_healthcare_db"),
+            port=3306
+        )
+        cursor = db.cursor()
+
+        sql = """
+            INSERT INTO manual_patients (patient_id, patient_name, severity, latitude, longitude, emergency_type, notes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """
+        values = (
+            generated_id,
+            patient_in.name,
+            patient_in.severity,
+            patient_in.lat,
+            patient_in.lon,
+            patient_in.emergency_type,
+            patient_in.notes
+        )
+        
+        cursor.execute(sql, values)
+        db.commit()
+        print(f"[DB] Successfully saved MANUAL patient: {patient_in.name}")
+
+    except Exception as e:
+        print(f"\n❌ FATAL DATABASE ERROR (Manual Patient): {e}\n")
+    finally:
+        if 'db' in locals() and db.is_connected():
+            cursor.close()
+            db.close()
+
 simulation_running = False
 simulation_task    = None
 ws_connections: List[WebSocket] = []
@@ -140,7 +245,8 @@ def rl_assign(patient: Dict) -> Dict:
 
 @app.post("/add_patient")
 def add_patient(patient_in: PatientIn):
-    patient_id = str(uuid.uuid4())[:8]
+    patient_id = f"PT-{str(uuid.uuid4())[:6].upper()}" 
+    save_manual_patient_to_db(patient_in, patient_id)
     patient = {
         **patient_in.dict(), "id": patient_id, "status": "pending", "timestamp": time.time(),
         "severity_label": "critical" if patient_in.severity >= 8 else "moderate" if patient_in.severity >= 5 else "mild"
@@ -161,6 +267,10 @@ def add_patient(patient_in: PatientIn):
 
     patient["status"] = "assigned"
     ASSIGNMENTS.append({"patient_id": patient_id, "hospital_id": h["id"], "ambulance_id": a["id"]})
+    
+    # ── LOG TO MYSQL DATABASE ──
+    save_dispatch_to_db(patient, assignment)
+
     return {"patient": patient, "assignment": assignment}
 
 @app.get("/get_live_tracking")
@@ -180,9 +290,7 @@ def get_stats():
         "hospitals": [
             {
                 "name": h["name"], 
-                # Actual percentage of beds currently taken
                 "occupancy_pct": round((h["total_beds"] - h["beds_available"]) / h["total_beds"] * 100, 1), 
-                # Estimated ICU beds taken based on overall occupancy
                 "icu_occupancy": max(0, int(((h["total_beds"] - h["beds_available"]) / h["total_beds"]) * h["icu_beds"]))
             } for h in HOSPITALS
         ]
@@ -200,17 +308,15 @@ async def simulation_loop():
                 dlat = target["lat"] - a["lat"]
                 dlon = target["lon"] - a["lon"]
                 
-                step = 0.008 # Finetuned speed for city turns
+                step = 0.008 
                 
                 # MANHATTAN GRID MOVEMENT (Travels via roads/L-shapes)
                 if abs(dlon) > step or abs(dlat) > step:
-                    # Move along the longest axis first to simulate city blocks
                     if abs(dlon) > abs(dlat):
                         a["lon"] += math.copysign(step, dlon)
                     else:
                         a["lat"] += math.copysign(step, dlat)
                 else:
-                    # Snap to exact target to finish route
                     a["lat"] = target["lat"]
                     a["lon"] = target["lon"]
                     
@@ -245,6 +351,7 @@ async def simulation_loop():
         for dead in dead_sockets: ws_connections.remove(dead)
         
         await asyncio.sleep(0.1)
+
 @app.get("/simulation/start")
 async def start_sim():
     global simulation_running, simulation_task
@@ -274,7 +381,6 @@ async def websocket_endpoint(websocket: WebSocket):
 
 @app.post("/reset")
 def env_reset():
-    
     global PATIENTS, ASSIGNMENTS
     PATIENTS.clear()
     ASSIGNMENTS.clear()
@@ -284,7 +390,6 @@ def env_reset():
 
 @app.post("/step")
 def env_step(action: dict):
-    
     return {"observation": get_live_tracking(), "reward": 0.0, "done": False}
 
 @app.get("/state")

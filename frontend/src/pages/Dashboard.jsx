@@ -23,10 +23,15 @@ export default function Dashboard({ simRunning, onToggleSim, simAssignments }) {
         fetch(`${API}/stats`).then(r => r.json()), 
         fetch(`${API}/get_live_tracking`).then(r => r.json()) 
       ]);
+      
+      // FIX 2: Limit React state bloat. We only display 5 patients, so don't store 1000 in memory.
+      if (t && t.patients) {
+        t.patients = t.patients.slice(-20);
+      }
+      
       setStats(s); 
       setTracking(t);
     } catch {
-      // Mock data fallback if backend is offline
       setStats({ 
         total_patients: 42, beds_in_use: 210, total_beds: 450, bed_occupancy_pct: 46.7, 
         available_ambs: 3, busy_ambs: 1, total_assignments: 38, 
@@ -79,7 +84,6 @@ export default function Dashboard({ simRunning, onToggleSim, simAssignments }) {
               <XAxis dataKey="name" tick={{ fill: "#777777", fontFamily: "var(--mono-font)", fontSize: 10 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#777777", fontFamily: "var(--mono-font)", fontSize: 10 }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: "#111111" }} />
-              {/* minPointSize ensures bars never fully vanish */}
               <Bar dataKey="General" fill="#ffffff" radius={[0, 0, 0, 0]} name="General" minPointSize={3} />
               <Bar dataKey="ICU"     fill="#f50000" radius={[0, 0, 0, 0]} name="ICU" minPointSize={3} />
             </BarChart>

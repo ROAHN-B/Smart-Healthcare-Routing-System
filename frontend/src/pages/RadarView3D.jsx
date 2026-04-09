@@ -113,7 +113,6 @@ export default function RadarView3D() {
     const buildMat = new THREE.MeshPhongMaterial({ color: 0x050510, transparent: true, opacity: 0.8 });
     const edgeMat = new THREE.LineBasicMaterial({ color: 0x004488, transparent: true, opacity: 0.4 });
     
-    // Create city blocks with gaps for "roads"
     for (let x = -MAP_SIZE/2 + 4; x < MAP_SIZE/2; x += 8) {
         for (let z = -MAP_SIZE/2 + 4; z < MAP_SIZE/2; z += 8) {
             if (Math.random() > 0.3) { 
@@ -176,14 +175,13 @@ export default function RadarView3D() {
         }
       });
 
+      // FIX 2: Store active IDs to track exactly which models to keep rendered
+      const activePatientIds = new Set();
+
       patients.forEach(p => {
-        if (p.status === "picked_up" || p.status === "admitted") {
-          if (meshesRef.current.patients[p.id]) {
-            scene.remove(meshesRef.current.patients[p.id]);
-            delete meshesRef.current.patients[p.id];
-          }
-          return;
-        }
+        if (p.status === "picked_up" || p.status === "admitted") return;
+        
+        activePatientIds.add(String(p.id));
 
         if (!meshesRef.current.patients[p.id]) {
           const mesh = new THREE.Mesh(
@@ -201,11 +199,21 @@ export default function RadarView3D() {
         mesh.rotation.y += 0.02;
       });
 
-      // Update Ambulances (WITH LERP SMOOTHING)
+      // FIX 2: Prevent the WebGL Memory Leak!
+      // Destroys geometry and materials of patients who have been picked up/admitted
+      Object.keys(meshesRef.current.patients).forEach(id => {
+        if (!activePatientIds.has(id)) {
+          const mesh = meshesRef.current.patients[id];
+          scene.remove(mesh);
+          mesh.geometry.dispose();  // Critical for GPU memory
+          mesh.material.dispose();  // Critical for GPU memory
+          delete meshesRef.current.patients[id];
+        }
+      });
+
       ambulances.forEach(a => {
         if (!meshesRef.current.ambulances[a.id]) {
           const mesh = createAmbulance(0x22aaff);
-          // Start the ambulance exactly where it spawns to prevent a huge initial sweep
           const startPos = project3D(a.lat, a.lon);
           mesh.position.set(startPos.x, 1.0, startPos.z);
           scene.add(mesh);
@@ -215,26 +223,20 @@ export default function RadarView3D() {
         const m = meshesRef.current.ambulances[a.id];
         const targetPos = project3D(a.lat, a.lon);
         
-        // LERP: Smoothly glide towards the target (0.1 = smooth, 1.0 = instant snap)
         const lerpSpeed = 0.1; 
-        
-        // Save current position to calculate the direction of the glide
         const currentX = m.position.x;
         const currentZ = m.position.z;
         
         m.position.x += (targetPos.x - currentX) * lerpSpeed;
         m.position.z += (targetPos.z - currentZ) * lerpSpeed;
         
-        
         const moveX = m.position.x - currentX;
         const moveZ = m.position.z - currentZ;
         
-        // Only update rotation if the drone is actually moving
         if (Math.abs(moveX) > 0.0001 || Math.abs(moveZ) > 0.0001) {
             m.lookAt(m.position.x + moveX, m.position.y, m.position.z + moveZ);
         }
         
-       
         m.position.y = 1.0 + Math.sin(time * 2 + a.id.charCodeAt(0)) * 0.2; 
       });
 
@@ -248,7 +250,16 @@ export default function RadarView3D() {
         : `${API.replace(/^http/, "ws")}/ws/live`.replace(/([^:]\/)\/+/g, "$1");
 
       const ws = new WebSocket(wsUrl);
-      ws.onmessage = (e) => { try { dataRef.current = JSON.parse(e.data); } catch(err){} };
+      ws.onmessage = (e) => { 
+        try { 
+          const parsed = JSON.parse(e.data); 
+          // FIX 2: Filter out admitted patients from websocket data instantly
+          if (parsed.patients) {
+            parsed.patients = parsed.patients.filter(p => p.status !== "admitted");
+          }
+          dataRef.current = parsed; 
+        } catch(err){} 
+      };
       ws.onclose = () => setTimeout(connectWS, 2000);
       wsRef.current = ws;
     };
