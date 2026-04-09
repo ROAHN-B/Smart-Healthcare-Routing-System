@@ -34,6 +34,7 @@ COPY --from=frontend-builder /app/frontend/dist ./static
 
 # Set PATH so the container uses the newly created uv virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
+RUN pip install mysql-connector-python
 ENV PYTHONPATH=/app:/app/openenv_env:/app/rl
 ENV PORT=7860
 
