@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 import numpy as np
 
-from healthcare_env import HealthcareRoutingEnv
+from openenv_env.healthcare_env import HealthcareRoutingEnv
 
 # ---------------------------------------------------------------------------
 # 1. Define 3 Distinct Tasks (Required for Phase 2 Validation)
@@ -21,7 +21,7 @@ class HealthcareTaskEasy:
     description: str       = "Easy routing scenario with 50 steps."
     tags: List[str]        = field(default_factory=lambda: ["healthcare", "easy"])
     difficulty: str        = "easy"
-    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 50})
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 50, "config": {"max_patients": 50, "traffic_mult": 1.0}})
 
     def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
         return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
@@ -33,7 +33,7 @@ class HealthcareTaskMedium:
     description: str       = "Medium routing scenario with 100 steps."
     tags: List[str]        = field(default_factory=lambda: ["healthcare", "medium"])
     difficulty: str        = "medium"
-    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 100})
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 100, "config": {"max_patients": 100, "traffic_mult": 1.5}})
 
     def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
         return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
@@ -45,7 +45,7 @@ class HealthcareTaskHard:
     description: str       = "Hard routing scenario with 200 steps."
     tags: List[str]        = field(default_factory=lambda: ["healthcare", "hard"])
     difficulty: str        = "hard"
-    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 200})
+    env_kwargs: Dict[str, Any] = field(default_factory=lambda: {"max_steps": 200, "config": {"max_patients": 200, "traffic_mult": 2.5}})
 
     def make_env(self, render_mode: Optional[str] = None) -> HealthcareRoutingEnv:
         return HealthcareRoutingEnv(render_mode=render_mode, **self.env_kwargs)
